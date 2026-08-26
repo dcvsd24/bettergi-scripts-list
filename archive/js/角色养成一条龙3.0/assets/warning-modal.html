@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提示</title>
+    <link rel="stylesheet" href="theme.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .modal-box {
+            width: 420px;
+            text-align: center;
+            padding: 32px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-box.visible {
+            opacity: 1;
+        }
+
+        .warning-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .modal-message {
+            font-size: 16px;
+            color: var(--gb-muted);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .countdown-text {
+            font-size: 14px;
+            color: var(--gb-warning);
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="gb-overlay">
+        <div class="modal-box gb-glass gb-frame" id="modalBox">
+            <div class="warning-icon">⚠️</div>
+            <div class="modal-title gb-gradient-text" id="modalTitle">未签署霸王条款</div>
+            <div class="modal-message" id="modalMessage">请先右键点击脚本名称选择 [ 打开脚本所在目录 ] 阅读README.md文档然后修改脚本自定义配置。</div>
+            <div class="btn-group">
+                <button class="gb-btn gb-btn-success" id="agreeBtn">同意</button>
+                <button class="gb-btn gb-btn-primary" id="closeBtn">关闭</button>
+            </div>
+            <div class="countdown-text" id="countdownText">20秒后自动关闭</div>
+        </div>
+    </div>
+
+    <script>
+        let countdown = 20;
+        let countdownInterval = null;
+        let isClosed = false;
+
+        function updateCountdown() {
+            countdown--;
+            document.getElementById('countdownText').textContent = countdown + '秒后自动关闭';
+            if (countdown <= 0) {
+                closeWindow();
+            }
+        }
+
+        function closeWindow() {
+            if (isClosed) return;
+            isClosed = true;
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            if (window.htmlMask) {
+                window.htmlMask.request('/close', '{}');
+            }
+        }
+
+        function agreeAndClose() {
+            if (isClosed) return;
+            isClosed = true;
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            if (window.htmlMask) {
+                window.htmlMask.request('/agree', '{}');
+            }
+        }
+
+        document.getElementById('closeBtn').addEventListener('click', closeWindow);
+        document.getElementById('agreeBtn').addEventListener('click', agreeAndClose);
+
+        function initModalContent(config) {
+            if (config.title) {
+                document.getElementById('modalTitle').textContent = config.title;
+            }
+            if (config.message) {
+                document.getElementById('modalMessage').textContent = config.message;
+            }
+            if (config.timeout) {
+                countdown = config.timeout;
+                document.getElementById('countdownText').textContent = countdown + '秒后自动关闭';
+            }
+            if (config.showAgreeBtn) {
+                document.getElementById('agreeBtn').style.display = 'inline-flex';
+            } else {
+                document.getElementById('agreeBtn').style.display = 'none';
+            }
+            document.getElementById('modalBox').classList.add('visible');
+        }
+
+        function init() {
+            countdownInterval = setInterval(updateCountdown, 1000);
+
+            const showTimeout = setTimeout(() => {
+                document.getElementById('modalBox').classList.add('visible');
+            }, 3000);
+
+            if (window.htmlMask) {
+                window.htmlMask.onMessage = function(msg) {
+                    try {
+                        const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
+                        if (parsed.url === '/initError') {
+                            clearTimeout(showTimeout);
+                            initModalContent(parsed.data);
+                        }
+                    } catch (e) {
+                        console.error('消息解析失败:', e);
+                    }
+                };
+                try {
+                    window.htmlMask.request('/ready', '{}');
+                } catch (e) {
+                    console.error('ready 请求异常:', e);
+                }
+            } else {
+                clearTimeout(showTimeout);
+                document.getElementById('modalBox').classList.add('visible');
+            }
+        }
+
+        try {
+            init();
+        } catch (e) {
+            console.error('初始化异常:', e);
+        }
+    </script>
+</body>
+</html>

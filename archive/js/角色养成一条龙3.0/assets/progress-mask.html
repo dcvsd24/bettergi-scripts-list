@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务进度</title>
+    <link rel="stylesheet" href="theme.css">
+    <style>
+        .panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 500px;
+            padding: 22px;
+            transition: all 0.3s ease;
+            transform-origin: bottom right;
+        }
+
+        .panel.minimized {
+            width: 140px;
+            height: 54px;
+            padding: 14px 18px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .panel.minimized .content,
+        .panel.minimized .header {
+            display: none;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gb-border);
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .character-name {
+            font-size: 15px;
+            font-weight: 600;
+            margin-left: 6px;
+            padding: 2px 8px;
+            background: rgba(139, 92, 246, 0.18);
+            border-radius: 4px;
+            color: var(--gb-primary);
+        }
+
+        .elapsed-time {
+            font-size: 14px;
+            color: var(--gb-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .shake-gif {
+            width: 70px;
+            height: 70px;
+            image-rendering: pixelated;
+        }
+
+        .stage-info {
+            margin-bottom: 16px;
+        }
+
+        .stage-name-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .stage-name {
+            font-size: 18px;
+            color: var(--gb-secondary);
+            font-weight: 700;
+            word-break: break-all;
+        }
+
+        .status-text {
+            font-size: 15px;
+            color: var(--gb-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(160, 160, 184, 0.3);
+            border-top-color: var(--gb-primary);
+            border-radius: 50%;
+            animation: gb-spin 1s linear infinite;
+        }
+
+        .extra-info {
+            font-size: 15px;
+            color: var(--gb-muted);
+            margin-top: 4px;
+        }
+
+        .progress-section {
+            margin-bottom: 14px;
+            padding-top: 40px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .progress-label {
+            font-size: 14px;
+            color: var(--gb-muted);
+        }
+
+        .progress-percentage {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gb-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.10);
+            border-radius: 4px;
+            overflow: visible;
+            position: relative;
+        }
+
+        .linnea-sprite {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 64px;
+            height: 64px;
+            image-rendering: pixelated;
+            pointer-events: none;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(-50%);
+        }
+
+        .stage-counter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--gb-muted);
+        }
+
+        .counter-current {
+            color: var(--gb-danger);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .n-key-hint {
+            margin-left: 12px;
+            font-size: 12px;
+            color: var(--gb-warning);
+            opacity: 1;
+            animation: gb-pulse 2s ease-in-out infinite;
+        }
+
+        .klee-run-gif {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 158px;
+            height: 42px;
+            image-rendering: pixelated;
+            border: 3px solid var(--gb-frame-outer);
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .minimized-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gb-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .uid-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: auto;
+            height: auto;
+            max-width: 300px;
+            max-height: 100px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .demo-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gb-warning);
+            color: #000;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <!-- UID遮挡图片 -->
+    <img class="uid-mask" id="uidMaskImg" src="RecognitionObject/UID遮挡.png" alt="UID遮挡">
+
+    <div class="panel gb-glass gb-frame" id="panel">
+        <div class="demo-badge" id="demoBadge" style="display: none;">DEMO</div>
+        <div class="header">
+            <div class="title gb-gradient-text">
+                <div class="title-icon gb-gradient-primary-soft">⚡</div>
+                角色养成一条龙
+                <span class="character-name" id="characterName" style="display: none;"></span>
+            </div>
+            <div class="elapsed-time" id="elapsedTime">00分00秒</div>
+        </div>
+
+        <div class="content">
+            <div class="stage-info">
+                <div class="stage-name-row">
+                    <div class="stage-name" id="stageName">准备中...</div>
+                    <img class="shake-gif" src="RecognitionObject/摇一摇.gif" alt="">
+                </div>
+                <div class="status-text" id="statusText">
+                    <span id="statusTextContent">正在初始化</span>
+                    <div class="loading-spinner" id="loadingSpinner"></div>
+                </div>
+                <div class="extra-info" id="extraInfo"></div>
+            </div>
+
+            <div class="progress-section">
+                <div class="progress-header">
+                    <span class="progress-label">总进度</span>
+                    <span class="progress-percentage" id="percentageText">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <img class="linnea-sprite" id="linneaSprite" src="RecognitionObject/linnea-running-right.gif" alt="">
+                    <div class="gb-progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="stage-counter">
+                <span>阶段：</span>
+                <span class="counter-current" id="currentStage">0</span>
+                <span> / </span>
+                <span id="totalStages">0</span>
+                <span class="n-key-hint">点按N隐藏面板</span>
+                <img class="klee-run-gif" src="RecognitionObject/可莉跑酷.gif" alt="">
+            </div>
+        </div>
+
+        <div class="minimized-title" id="minimizedTitle" style="display: none;">执行中...</div>
+    </div>
+
+    <script>
+        let isMinimized = false;
+
+        const panel = document.getElementById('panel');
+        const stageNameEl = document.getElementById('stageName');
+        const statusTextContentEl = document.getElementById('statusTextContent');
+        const extraInfoEl = document.getElementById('extraInfo');
+        const percentageTextEl = document.getElementById('percentageText');
+        const progressBarEl = document.getElementById('progressBar');
+        const currentStageEl = document.getElementById('currentStage');
+        const totalStagesEl = document.getElementById('totalStages');
+        const elapsedTimeEl = document.getElementById('elapsedTime');
+        const minimizedTitleEl = document.getElementById('minimizedTitle');
+        const demoBadge = document.getElementById('demoBadge');
+        const characterNameEl = document.getElementById('characterName');
+        const linneaSpriteEl = document.getElementById('linneaSprite');
+        const uidMaskImg = document.getElementById('uidMaskImg');
+
+        const BASE_SCALE = 1;
+        const BASE_WIDTH = 1920;
+
+        let timerStart = null;
+        let timerInterval = null;
+
+        function startLocalTimer() {
+            if (timerInterval) return;
+            timerStart = Date.now();
+            timerInterval = setInterval(function() {
+                if (timerStart) {
+                    elapsedTimeEl.textContent = formatTime(Math.floor((Date.now() - timerStart) / 1000));
+                }
+            }, 1000);
+        }
+
+        function syncTimerFromRemote(remoteElapsedText) {
+            if (!remoteElapsedText || typeof remoteElapsedText !== 'string') return;
+            const parts = remoteElapsedText.match(/(\d+)分(\d+)秒/);
+            if (!parts) return;
+            const mins = parseInt(parts[1], 10);
+            const secs = parseInt(parts[2], 10);
+            const totalSecs = mins * 60 + secs;
+            timerStart = Date.now() - totalSecs * 1000;
+            if (!timerInterval) {
+                startLocalTimer();
+            }
+        }
+
+        function toggleMinimized() {
+            isMinimized = !isMinimized;
+            panel.classList.toggle('minimized', isMinimized);
+
+            if (isMinimized) {
+                minimizedTitleEl.style.display = 'block';
+                minimizedTitleEl.textContent = stageNameEl.textContent || '执行中...';
+                linneaSpriteEl.style.display = 'none';
+            } else {
+                minimizedTitleEl.style.display = 'none';
+                linneaSpriteEl.style.display = 'block';
+            }
+        }
+
+        function updateProgress(data) {
+            if (data.stage !== undefined) {
+                stageNameEl.textContent = data.stage;
+                if (isMinimized) {
+                    minimizedTitleEl.textContent = data.stage;
+                }
+            }
+            if (data.status !== undefined) {
+                statusTextContentEl.textContent = data.status;
+            }
+            if (data.extraInfo !== undefined) {
+                extraInfoEl.textContent = data.extraInfo;
+                extraInfoEl.style.display = data.extraInfo ? 'block' : 'none';
+            }
+            if (data.percentage !== undefined) {
+                const pct = Math.min(100, Math.max(0, Math.round(data.percentage)));
+                percentageTextEl.textContent = pct + '%';
+                progressBarEl.style.width = pct + '%';
+                linneaSpriteEl.style.left = pct + '%';
+            }
+            if (data.current !== undefined) {
+                currentStageEl.textContent = data.current;
+            }
+            if (data.total !== undefined) {
+                totalStagesEl.textContent = data.total;
+            }
+            if (data.elapsedTime !== undefined) {
+                syncTimerFromRemote(data.elapsedTime);
+            }
+        }
+
+        function handleMessage(msg) {
+            if (msg.url === '/progress') {
+                let data = msg.data;
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { return; }
+                }
+                if (!data || typeof data !== 'object') return;
+                updateProgress(data);
+            } else if (msg.url === '/toggle') {
+                toggleMinimized();
+            } else if (msg.url === '/character') {
+                let data = msg.data;
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { return; }
+                }
+                if (data && data.characterName) {
+                    characterNameEl.textContent = '当前培养角色：' + data.characterName;
+                    characterNameEl.style.display = 'inline';
+                }
+            } else if (msg.url === '/uidmask') {
+                let data = msg.data;
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { return; }
+                }
+                if (data && data.action === 'show') {
+                    uidMaskImg.style.display = 'block';
+                    if (data.x !== undefined) uidMaskImg.style.left = data.x + 'px';
+                    if (data.y !== undefined) uidMaskImg.style.top = data.y + 'px';
+                } else if (data && data.action === 'hide') {
+                    uidMaskImg.style.display = 'none';
+                } else if (data && data.action === 'position') {
+                    if (data.x !== undefined) uidMaskImg.style.left = data.x + 'px';
+                    if (data.y !== undefined) uidMaskImg.style.top = data.y + 'px';
+                }
+            }
+        }
+
+        function calculateResponsiveOffset(baseOffset) {
+            const w = window.innerWidth;
+            return Math.round(baseOffset * w / BASE_WIDTH);
+        }
+
+        function applyDpiScale() {
+            panel.style.transformOrigin = 'bottom right';
+            let scale = BASE_SCALE;
+
+            requestAnimationFrame(function() {
+                const panelWidth = panel.offsetWidth * scale;
+                const windowWidth = window.innerWidth;
+                const margin = 16;
+
+                if (panelWidth + margin > windowWidth) {
+                    scale = (windowWidth - margin) / panel.offsetWidth;
+                }
+
+                panel.style.transform = 'scale(' + scale + ')';
+            });
+        }
+
+        function init() {
+            applyDpiScale();
+
+            if (window.htmlMask) {
+                window.htmlMask.onMessage = handleMessage;
+                try {
+                    window.htmlMask.request('/ready', '{}');
+                } catch (e) {
+                    stageNameEl.textContent = 'ready 请求异常: ' + e.message;
+                    statusTextEl.textContent = String(e);
+                }
+            } else {
+                demoBadge.style.display = 'block';
+                startDemo();
+            }
+
+            panel.addEventListener('click', function() {
+                if (isMinimized) {
+                    toggleMinimized();
+                }
+            });
+        }
+
+        async function startDemo() {
+            let talentDomainName = '自由';
+            let weaponDomainName = '高塔孤王';
+            let bossMaterialName = '爆炎树';
+            let localSpecialties = '琉璃袋';
+            try {
+                const configRes = await fetch('../data/run_data/config.json');
+                const configData = await configRes.json();
+                configData.forEach(function(item) {
+                    if (item.talentDomainName !== undefined) talentDomainName = item.talentDomainName || '自由';
+                    if (item.weaponDomainName !== undefined && item.weaponDomainName) weaponDomainName = item.weaponDomainName;
+                    if (item.bossMaterialName !== undefined) bossMaterialName = item.bossMaterialName || '爆炎树';
+                    if (item.LocalSpecialties !== undefined && item.LocalSpecialties) localSpecialties = item.LocalSpecialties;
+                });
+            } catch (e) {
+                console.warn('加载 config.json 失败，使用默认值:', e);
+            }
+
+            const stages = [
+                { stage: '角色识别与材料计算', status: '识别中...', percentage: 5 },
+                { stage: '天赋书刷取', status: '刷取材料：' + talentDomainName +  ' ❃准备获取中...', percentage: 15 },
+                { stage: '武器秘境材料刷取', status: '刷取材料：' + weaponDomainName +' ❃准备获取中...', percentage: 30 },
+                { stage: '首领材料刷取', status: '刷取材料：' + bossMaterialName +  ' ❃准备获取中...', percentage: 45 },
+                { stage: '地方特产采集', status: '采集材料：' + localSpecialties +  ' ❃准备获取中...', percentage: 60 },
+                { stage: '敌人与魔物战斗', status: '刷取材料中', percentage: 75 },
+                { stage: '武器魔物材料', status: '刷取材料中', percentage: 85 },
+                { stage: '地脉花管理', status: '地脉花结束', percentage: 95 },
+                { stage: '全部完成！', status: '执行结束', percentage: 100 }
+            ];
+
+            let i = 0;
+            totalStagesEl.textContent = stages.length;
+
+            setInterval(function() {
+                if (i < stages.length) {
+                    currentStageEl.textContent = i + 1;
+                    updateProgress({
+                        ...stages[i],
+                        current: i + 1,
+                        total: stages.length,
+                        elapsedTime: formatTime(i * 3)
+                    });
+                    i++;
+                }
+            }, 3000);
+
+            let seconds = 0;
+            setInterval(function() {
+                seconds++;
+                elapsedTimeEl.textContent = formatTime(seconds);
+            }, 1000);
+        }
+
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}分${String(seconds).padStart(2, '0')}秒`;
+        }
+
+        try {
+            init();
+        } catch (e) {
+            stageNameEl.textContent = '初始化异常: ' + e.message;
+            statusTextEl.textContent = String(e.stack || e).substring(0, 200);
+        }
+
+        window.addEventListener('resize', function() {
+            applyDpiScale();
+        });
+    </script>
+</body>
+</html>
