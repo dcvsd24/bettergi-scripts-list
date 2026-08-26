@@ -204,7 +204,8 @@ var Farming = {
                     // 记录本轮刷取前数量快照（用于计算本轮获取量并通知）
                     if (firstBossCounts === null) firstBossCounts = bossCounts;
                     // 缺口 = 前面角色累计需求(基数) + 本角色需求 - 背包现有（首领材料为账号共享资源）
-                    res = bossRequireCounts + baselineCounts - bossCounts;
+                    // 数字化处理：config 中 bossRequireCounts 可能为字符串，直接相加会触发字符串拼接导致缺口被放大
+                    res = (Number(bossRequireCounts) || 0) + (Number(baselineCounts) || 0) - bossCounts;
                     Farming.recordProgress("boss", bossName, (Number(bossRequireCounts) || 0) + (Number(baselineCounts) || 0), Math.max(0, res), characterName, uid);
                     if (res > 0) {
                         log.info(`${bossName}还差${res}个材料没有刷取`);
@@ -231,7 +232,8 @@ var Farming = {
                 // 记录本轮刷取前数量快照（用于计算本轮获取量并通知）
                 if (firstBossCounts === null) firstBossCounts = bossCounts;
                 // 缺口 = 前面角色累计需求(基数) + 本角色需求 - 背包现有（首领材料为账号共享资源）
-                let res = bossRequireCounts + baselineCounts - bossCounts;
+                // 数字化处理：config 中 bossRequireCounts 可能为字符串，直接相加会触发字符串拼接导致缺口被放大
+                let res = (Number(bossRequireCounts) || 0) + (Number(baselineCounts) || 0) - bossCounts;
                 Farming.recordProgress("boss", bossName, (Number(bossRequireCounts) || 0) + (Number(baselineCounts) || 0), Math.max(0, res), characterName, uid);
                 if (res > 0) {
                     Utils.addNotification(`${bossName}还差${res}个材料没有刷取`);

@@ -275,7 +275,9 @@ function buildCurrentDemandBase() {
         // 当前角色 7 类材料键入表：值 = 前面角色累计（无记录按类型零值兜底）
         for (const entry of demands) {
             if (!Object.prototype.hasOwnProperty.call(base, entry.name)) {
-                base[entry.name] = Array.isArray(entry.demand) ? entry.demand.slice() : 0;
+                // #10：数组型需求（天赋书 3 档/武器 4 档）无累计记录时使用与其长度一致的全零数组，
+                // 而非复制当前角色自身需求，确保基数仅代表"前面角色累计需求"
+                base[entry.name] = Array.isArray(entry.demand) ? entry.demand.map(() => 0) : 0;
             }
         }
         if (Object.keys(base).length > 0) {

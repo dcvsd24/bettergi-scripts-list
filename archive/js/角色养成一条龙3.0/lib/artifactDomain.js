@@ -99,8 +99,14 @@ async function runArtifactDomainFarm() {
         const currentStamina = await Inventory.queryStaminaValue();
         await genshin.returnMainUi();
         const maxRoundsByStamina = Math.floor(currentStamina / 20);
-        if (maxRoundsByStamina <= 0) {
-            log.info(`原粹树脂不足（当前 ${currentStamina}），跳过圣遗物副本刷取`);
+        // 须臾树脂可执行次数：功能设置开启且首次树脂检查匹配到须臾树脂时才计入；
+        // 与原粹树脂为两种独立材料，不共用次数，各自独立刷取
+        const transientRounds = (settings.useTransientResin && Inventory.transientResinAvailable === true)
+            ? (parseInt(settings.transientResinCount, 10) || 1)
+            : 0;
+        // 原粹树脂与须臾树脂都无法运行该域时才跳过（两种树脂不共用次数）
+        if (maxRoundsByStamina <= 0 && transientRounds <= 0) {
+            log.info(`原粹树脂与须臾树脂均不足（原粹 ${currentStamina}，须臾 ${transientRounds} 次），跳过圣遗物副本刷取`);
             return;
         }
         // 原粹树脂刷取次数：默认刷到耗尽；如需自定义次数，可在设置中配置 domainRounds（正整数）
@@ -108,21 +114,19 @@ async function runArtifactDomainFarm() {
             ? Math.max(1, parseInt(settings.domainRounds, 10) || 999)
             : 999;
         const domainRounds = Math.min(configuredRounds, maxRoundsByStamina);
-        log.info(`当前原粹树脂：${currentStamina}，最多可执行 ${maxRoundsByStamina} 次，本次实际执行 ${domainRounds} 次`);
+        log.info(`当前原粹树脂：${currentStamina}，最多可执行 ${maxRoundsByStamina} 次，本次实际执行 ${domainRounds} 次`
+            + (transientRounds > 0 ? `，须臾树脂 ${transientRounds} 次` : ''));
         const param = new AutoDomainParam();
         param.PartyName = settings.teamName || "";
         param.DomainName = domainName;
         // 结束后是否自动分解圣遗物：默认关闭（功能设置中可开启）
         param.AutoArtifactSalvage = settings.autoArtifactSalvage === true;
         param.SpecifyResinUse = true;
-        // 原粹树脂刷到耗尽
+        // 原粹树脂刷到耗尽（不包含须臾树脂次数，两者独立）
         param.OriginalResinUseCount = domainRounds;
         param.CondensedResinUseCount = 0;
-        // 使用须臾树脂刷取副本次数：功能设置开启且首次树脂检查匹配到须臾树脂时才传入次数；
-        // 未启用或图像匹配失败（须臾树脂数量为零）时不传入（为 0）
-        param.TransientResinUseCount = (settings.useTransientResin && Inventory.transientResinAvailable === true)
-            ? (parseInt(settings.transientResinCount, 10) || 1)
-            : 0;
+        // 须臾树脂刷取副本次数：独立于原粹树脂，不共用次数
+        param.TransientResinUseCount = transientRounds;
         param.FragileResinUseCount = 0;
         if (param.FightConfig) param.FightConfig.StrategyName = settings.strategyName || "";
 

@@ -606,7 +606,8 @@ async function executeLocalBatch(allScripts, isExcludeGrassGod, materialType, cu
             }
         );
         
-        const executedPaths = new Set(scriptsToExecute.slice(0, result.executedCount).map(s => s.path));
+        // #7：仅移除成功完成的路径，失败路径保留在 remainingScripts 供下一轮重试
+        const executedPaths = new Set(result.successfulPaths || scriptsToExecute.slice(0, result.executedCount).map(s => s.path));
         remainingScripts = remainingScripts.filter(s => !executedPaths.has(s.path));
         
         // 每批固定：仅对当前材料类型（地方特产）做背包 API 扫描，刷新数量缺口
@@ -694,7 +695,13 @@ async function executeMonsterBatch(allScripts, configKey, materialType, currentU
                 );
             }
         );
-        remainingScripts = result.remainingScripts;
+        // #7：仅移除成功完成的路径，失败路径保留在 remainingScripts 供下一轮重试
+        if (Array.isArray(result.successfulPaths)) {
+            const executedPaths = new Set(result.successfulPaths);
+            remainingScripts = remainingScripts.filter(s => !executedPaths.has(s.path));
+        } else {
+            remainingScripts = result.remainingScripts;
+        }
         
         // 每批固定：仅对当前材料类型做背包 API 扫描，刷新数量缺口
         await scanAndUpdateWikiMaterials(materialType);

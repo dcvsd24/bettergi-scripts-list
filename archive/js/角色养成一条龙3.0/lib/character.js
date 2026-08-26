@@ -1087,7 +1087,7 @@ var Character = {
             
             if (recognitionType === "all" || recognitionType === "weapon") {
                 const currWeaponLvl = weaponInfo.weaponLevel.match(/(\d+)级/) ? parseInt(weaponInfo.weaponLevel.match(/(\d+)级/)[1]) : 0;
-                const targetWeaponLvl = settings.weaponMaterialRequireCounts ? parseInt(settings.weaponMaterialRequireCounts.match(/(\d+)级/)[1]) : 80;
+                const targetWeaponLvl = settings.weaponMaterialRequireCounts ? parseInt((settings.weaponMaterialRequireCounts.match(/(\d+)级/) || [])[1]) : 80;
                 const weaponStar = weaponInfo.weaponStar;
                 
                 const weaponConfigObj = {
@@ -1161,7 +1161,7 @@ var Character = {
             
             if (recognitionType === "all" || recognitionType === "break") {
                 const currCharLvl = breakInfo.breakResult.match(/(\d+)级/) ? parseInt(breakInfo.breakResult.match(/(\d+)级/)[1]) : 0;
-                const targetCharLvl = settings.bossRequireCounts ? parseInt(settings.bossRequireCounts.match(/(\d+)级/)[1]) : 80;
+                const targetCharLvl = settings.bossRequireCounts ? parseInt((settings.bossRequireCounts.match(/(\d+)级/) || [])[1]) : 80;
 
                 let charMatCount = 0;
                 if (currCharLvl <= targetCharLvl && currCharLvl > 0) {

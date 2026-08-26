@@ -551,9 +551,9 @@
         "alias": [
             "兽怪暴徒"
         ],
-        "id": "0051",
+        "id": "0052",
         "name": "先躯秘源统辖阵列",
-        "material": "沉积残片,沉积结块,沉积增生物,",
+        "material": "沉积残片,沉积结块,沉积增生物",
         "nameEn": "Domain Guardian",
         "type": "Elite"
     }

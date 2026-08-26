@@ -355,6 +355,9 @@ var Collection = {
         let isTaskCanceled = false;
         let executedCount = 0;
         const remainingScripts = [];
+        // #7：显式记录成功/失败路径，供批次调用方精确移除成功路径、保留失败路径重试
+        const successfulPaths = [];
+        const failedPaths = [];
         const ABNORMAL_TIME_THRESHOLD = 9 * 60 * 1000;//多少分钟为异常阈值
         
         const endIndex = maxCount > 0 ? Math.min(startIndex + maxCount, scriptList.length) : scriptList.length;
@@ -401,6 +404,7 @@ var Collection = {
                 }
                 
                 executedCount++;
+                successfulPaths.push(script.path);
                 
                 log.info(`✅ 脚本执行成功：${script.name}（预计获取${script.count || 0}个材料），耗时${(scriptElapsedTime / 1000).toFixed(1)}秒`);
                 
@@ -421,6 +425,9 @@ var Collection = {
                     for (let k = i; k < scriptList.length; k++) {
                         remainingScripts.push(scriptList[k]);
                     }
+                } else {
+                    // #7：非取消的失败路径显式记录，供批次调用方保留重试
+                    failedPaths.push(script.path);
                 }
                 if (isLast) isLastScriptSuccess = false;
                 if (!isTaskCanceled) continue;
@@ -434,7 +441,7 @@ var Collection = {
             }
         }
         
-        return { isLastSuccess: isLastScriptSuccess, executedCount, remainingScripts };
+        return { isLastSuccess: isLastScriptSuccess, executedCount, remainingScripts, successfulPaths, failedPaths };
     },
     
     // 获取起始索引（基于冷却记录）

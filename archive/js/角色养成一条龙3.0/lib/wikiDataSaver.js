@@ -228,6 +228,9 @@ var WikiDataSaver = {
             }
             // 材料列表追加：materialName 可能是 "1★,2★,3★" 三连串
             // 下游 backStats.resolveMaterialStars 按"每3个一组"切片，必须保持组结构
+            // 说明（#12）：正常数据下 material 为"每组 3 个、多组互不重名"，任意两项材料名不会重合；
+            // 若出现同名重合只可能是保存数据时出错（错误地保存了两个同名材料）。
+            // 故此处保持组结构整体追加、不做逐项去重是正确行为。
             const existingMaterials = (entry.material || "")
                 .split(",")
                 .map(s => s.trim())

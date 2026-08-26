@@ -92,6 +92,8 @@ var Navigation = {
             }
             
             for (let i = 0; i < 100; i++) {
+                // 释放上一帧捕获区域，避免 while 循环内重复捕获导致资源泄漏
+                if (captureRegion) captureRegion.dispose();
                 captureRegion = captureGameRegion();
                 let iconRes = captureRegion.Find(boxIconRo);
                 let climbTextArea = captureRegion.DeriveCrop(1685, 1030, 65, 25);

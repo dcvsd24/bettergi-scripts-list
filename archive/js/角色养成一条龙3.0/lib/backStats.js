@@ -40,6 +40,9 @@ async function scanWikiBackpackMaterials(materialSpec) {
                     const idx = materials.indexOf(materialName);
                     if (idx === -1) continue;
                     // 判断属于前 3 个一组还是后 3 个一组
+                    // 说明：groupStart 只取 0 或 3 是有意为之——同一怪物可能掉落两种不同材料，
+                    // 而消费端只需要其中一种材料的三个星级名称，故按"每 3 个一组"取第一组或第二组；
+                    // idx >= 6 的额外材料组不在本流程使用范围内，无需处理。
                     const groupStart = idx < 3 ? 0 : 3;
                     // 确保该组有 3 个材料
                     if (groupStart + 3 > materials.length) {

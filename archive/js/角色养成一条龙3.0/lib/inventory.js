@@ -147,6 +147,8 @@ var Inventory = {
                 return quantity;
             } else {
                 log.warn(`${bossName}材料识别失败，请检查相关设置`);
+                // 识别失败与异常分支口径统一：返回 0，避免调用方用 undefined 做缺口计算得到 NaN
+                return 0;
             }
         } catch (error) { if (Utils.isCancellationError(error)) throw error;
             notification.send(`${bossName}材料刷取失败，错误信息: ${error}`);
